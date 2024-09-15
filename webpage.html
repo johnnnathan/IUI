@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Search and Macronutrient Analyzer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            display: flex;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .left-panel {
+            flex: 1;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-right: 20px;
+        }
+        .right-panel {
+            position: fixed; /* Fixed position */
+            right: 20px;
+            top: 20px;
+            width: 300px; /* More compact width */
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: none; /* Hidden by default */
+            max-height: 90vh; /* Maintain space on the page */
+            overflow-y: auto; /* Scroll if content is too long */
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        #searchInput {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #results {
+            margin-top: 20px;
+        }
+        .food-item {
+            background-color: #f9f9f9;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .food-item:hover {
+            background-color: #e9e9e9;
+        }
+        .food-item h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .macro {
+            display: block;
+            margin-bottom: 3px;
+            font-size: 0.9em; /* Smaller font for compactness */
+        }
+        .score {
+            font-size: 1em;
+            font-weight: bold;
+            padding: 5px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .score-good {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .score-bad {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .score-medium {
+            background-color: #FFC107;
+            color: white;
+        }
+        #showMoreBtn {
+            display: none;
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        #showMoreBtn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left-panel">
+            <h1>Macronutrient Profile Scorer</h1>
+            <input type="text" id="searchInput" placeholder="Search for a food item...">
+            <div id="results"></div>
+            <button id="showMoreBtn">Show More</button>
+        </div>
+        <div class="right-panel" id="detailedView"></div>
+    </div>
+
+    <script>
+        let foodData = [];
+        let filteredFoods = [];
+        let displayedResults = 10;
+
+        async function loadCSV() {
+            const response = await fetch('food_data.csv');
+            const data = await response.text();
+            const rows = data.split('\n').slice(1); // Skip header row
+            foodData = rows.map(row => {
+                const columns = row.split(',');
+                return {
+                    name: columns[1],
+                    calories: parseFloat(columns[3]),
+                    fat: parseFloat(columns[4]),
+                    protein: parseFloat(columns[5]),
+                    carbs: parseFloat(columns[6]),
+                    fiber: parseFloat(columns[8]),
+                    sugars: parseFloat(columns[7]),
+                    cholesterol: parseFloat(columns[9]),
+                    saturatedFats: parseFloat(columns[10]),
+                    calcium: parseFloat(columns[11]),
+                    iron: parseFloat(columns[12]),
+                    potassium: parseFloat(columns[13]),
+                    magnesium: parseFloat(columns[14]),
+                    vitaminA: parseFloat(columns[15]),
+                    vitaminC: parseFloat(columns[17]),
+                    vitaminB12: parseFloat(columns[18]),
+                    vitaminD: parseFloat(columns[19]),
+                    vitaminE: parseFloat(columns[20])
+                };
+            });
+        }
+
+        function calculateScore(food) {
+            let score = 0;
+
+            // Positive scoring: protein
+            if (food.protein > 25) score += 4;
+            else if (food.protein > 15) score += 3;
+            else if (food.protein > 10) score += 2;
+            else if (food.protein > 5) score += 1;
+
+            // Positive scoring: fiber
+            if (food.fiber > 10) score += 3;
+            else if (food.fiber > 5) score += 2;
+            else if (food.fiber > 2) score += 1;
+
+            // Positive scoring: vitamins and minerals
+            if (food.vitaminC > 30) score += 1;
+            if (food.calcium > 100) score += 1;
+            if (food.iron > 5) score += 1;
+            if (food.potassium > 300) score += 1;
+
+            // Positive scoring: low fat and carbs
+            if (food.fat < 10) score += 1;
+            if (food.carbs < 20) score += 1;
+
+            // Negative scoring: sugars
+            if (food.sugars > 20) score -= 2;
+            else if (food.sugars > 10) score -= 1;
+            else if (food.sugars < 3) score += 2;
+
+
+            // Negative scoring: saturated fats
+            if (food.saturatedFats > 10) score -= 2;
+            else if (food.saturatedFats > 5) score -= 1;
+
+            // Calories score modifier (rewards low-calorie foods)
+            if (food.calories < 100) score += 2;   // Excellent calorie range
+            else if (food.calories < 200) score += 1;  // Good calorie range
+            else if (food.calories > 350) score -= 2;  // Penalize high-calorie foods
+
+            // Normalize the score to be within 0 to 10
+            score = Math.max(0, Math.min(score, 10));
+
+            return score;
+        }
+        function displayResults() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            filteredFoods.slice(0, displayedResults).forEach(food => {
+                const foodDiv = document.createElement('div');
+                foodDiv.className = 'food-item';
+                foodDiv.innerHTML = `<h3>${food.name}</h3>`;
+                foodDiv.addEventListener('click', () => showDetailedView(food));
+                resultsDiv.appendChild(foodDiv);
+            });
+
+            const showMoreBtn = document.getElementById('showMoreBtn');
+            if (filteredFoods.length > displayedResults) {
+                showMoreBtn.style.display = 'block';
+            } else {
+                showMoreBtn.style.display = 'none';
+            }
+        }
+
+        function showDetailedView(food) {
+            const detailedView = document.getElementById('detailedView');
+            const score = calculateScore(food);
+            const scoreClass = score >= 7 ? 'score-good' : (score >= 4 ? 'score-medium' : 'score-bad');
+            detailedView.innerHTML = `
+                <h2>${food.name}</h2>
+                <p class="macro">Calories: ${food.calories}</p>
+                <p class="macro">Fat: ${food.fat}g</p>
+                <p class="macro">Protein: ${food.protein}g</p>
+                <p class="macro">Carbs: ${food.carbs}g</p>
+                <p class="macro">Fiber: ${food.fiber}g</p>
+                <p class="macro">Sugars: ${food.sugars}g</p>
+                <p class="macro">Cholesterol: ${food.cholesterol}mg</p>
+                <p class="macro">Saturated Fats: ${food.saturatedFats}g</p>
+                <p class="macro">Calcium: ${food.calcium}mg</p>
+                <p class="macro">Iron: ${food.iron}mg</p>
+                <p class="macro">Potassium: ${food.potassium}mg</p>
+                <p class="macro">Magnesium: ${food.magnesium}mg</p>
+                <p class="macro">Vitamin A: ${food.vitaminA}IU</p>
+                <p class="macro">Vitamin C: ${food.vitaminC}mg</p>
+                <p class="macro">Vitamin B12: ${food.vitaminB12}mcg</p>
+                <p class="macro">Vitamin D: ${food.vitaminD}mcg</p>
+                <p class="macro">Vitamin E: ${food.vitaminE}mg</p>
+                <p>Score: <span class="score ${scoreClass}">${score}</span></p>
+            `;
+            detailedView.style.display = 'block'; // Show detailed view
+        }
+
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            filteredFoods = foodData.filter(food => 
+                food.name.toLowerCase().includes(searchTerm)
+            );
+            
+            // Sort by name length, then alphabetically
+            filteredFoods.sort((a, b) => {
+                if (a.name.length === b.name.length) {
+                    return a.name.localeCompare(b.name);
+                }
+                return a.name.length - b.name.length;
+            });
+
+            displayedResults = 10;
+            displayResults();
+            document.getElementById('detailedView').style.display = 'none';
+        });
+
+        document.getElementById('showMoreBtn').addEventListener('click', function() {
+            displayedResults += 10;
+            displayResults();
+        });
+
+        window.addEventListener('load', loadCSV);
+    </script>
+
+    <script>
+        window.addEventListener('load', () => {
+            document.getElementById('searchInput').value = ''; // Clear the search bar on page load
+        });
+    </script>
+</body>
+</html>

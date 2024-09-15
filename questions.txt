@@ -1,0 +1,17 @@
+Questions for the text to speech program
+
+How often do you use a text to speech program?
+Would that increase with access to a better implementation?
+What do you believe to be a feature that no text to speech program does perfectly?
+What do you value most in a text to speech program? -Speech clarity -Voice customisability/wide range of options -Speed modifiers 
+Does there exist a feature that you deem important that no program has? What is it?
+Why do you use a text to speech program? -I do not -AudioBooks -Accessibility(Deaf) -Translation 
+If you do use a text to speech program, what would make you switch platforms?
+
+For the ingredient rater and meal planner
+
+Do you use a meal planner?
+What diet type do you follow?
+What is the most important feature for the meal planner to have?
+Do you care about ingredient and meal macronutrient values?
+Do you know how to read macro/micronutrient values?
